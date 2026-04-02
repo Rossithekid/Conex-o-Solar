@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conexão Solar — CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --neon:#00FF87;--neon2:#00CC6A;--neon-dim:rgba(0,255,135,0.12);--neon-glow:0 0 20px rgba(0,255,135,0.3);
+  --bg:#080B0F;--surface:#0D1117;--surface2:#131920;--surface3:#1A2230;
+  --border:rgba(0,255,135,0.08);--border2:rgba(0,255,135,0.2);
+  --text:#E8F0E9;--muted:#4A6358;--muted2:#6B8F7A;
+  --red:#FF4D6D;--amber:#FFB547;--blue:#4D9FFF;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--neon-dim);border-radius:2px;}
+
+/* LOGIN */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.login-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px;width:100%;max-width:400px;}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;justify-content:center;}
+.login-logo-icon{width:44px;height:44px;background:var(--neon);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.login-logo-text{font-size:20px;font-weight:700;}
+.login-logo-text span{color:var(--neon);}
+.login-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.login-group label{font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted2);}
+.login-group input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;}
+.login-group input:focus{border-color:var(--neon2);}
+.login-group input::placeholder{color:var(--muted);}
+.btn-login{width:100%;padding:12px;border-radius:10px;border:none;background:var(--neon);color:#000;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;}
+.btn-login:disabled{opacity:0.5;cursor:not-allowed;}
+.login-error{background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);margin-top:14px;display:none;}
+
+/* APP */
+#app{display:none;}
+header{background:var(--surface);border-bottom:1px solid var(--border2);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;background:var(--neon);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.logo-text{font-size:17px;font-weight:700;}
+.logo-text span{color:var(--neon);}
+.header-right{display:flex;align-items:center;gap:16px;}
+.status-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted2);}
+.dot-live{width:7px;height:7px;border-radius:50%;background:var(--neon);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.user-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted2);}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:var(--neon-dim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--neon);}
+.btn-logout{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;}
+.btn-logout:hover{border-color:var(--red);color:var(--red);}
+.nav-tabs{display:flex;gap:4px;}
+.nav-tab{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;color:var(--muted2);border:none;background:none;cursor:pointer;transition:all 0.15s;}
+.nav-tab:hover{color:var(--text);background:var(--surface2);}
+.nav-tab.active{background:var(--neon-dim);color:var(--neon);border:1px solid var(--border2);}
+
+/* DASHBOARD */
+#dashboard{padding:24px 28px;}
+.section-title{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:14px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.2s,transform 0.2s;}
+.kpi-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--neon),transparent);opacity:0.6;}
+.kpi-card.amber::before{background:linear-gradient(90deg,var(--amber),transparent);}
+.kpi-card.blue::before{background:linear-gradient(90deg,var(--blue),transparent);}
+.kpi-card.red::before{background:linear-gradient(90deg,var(--red),transparent);}
+.kpi-label{font-size:11px;font-weight:500;color:var(--muted2);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
+.kpi-value{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.kpi-value.green{color:var(--neon);text-shadow:0 0 20px rgba(0,255,135,0.4);}
+.kpi-value.amber{color:var(--amber);}
+.kpi-value.blue{color:var(--blue);}
+.kpi-sub{font-size:12px;color:var(--muted2);margin-top:6px;}
+.kpi-icon{position:absolute;right:16px;top:16px;font-size:22px;opacity:0.3;}
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.chart-card.wide{grid-column:span 2;}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.chart-title::before{content:'';width:3px;height:14px;background:var(--neon);border-radius:2px;}
+.chart-wrap{position:relative;height:200px;}
+
+/* CRM */
+#crm{padding:0 28px 28px;display:none;}
+.crm-header{display:flex;align-items:center;padding:20px 0 16px;flex-wrap:wrap;gap:10px;}
+.tabs-scroll{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;flex:1;}
+.tab-btn{padding:7px 16px;font-size:12px;font-weight:500;color:var(--muted2);border:1px solid transparent;background:var(--surface2);border-radius:7px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+.tab-btn:hover{color:var(--text);border-color:var(--border);}
+.tab-btn.active{color:var(--neon);background:var(--neon-dim);border-color:var(--border2);}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.search-wrap{flex:1;min-width:180px;max-width:280px;position:relative;}
+.search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;}
+.search-wrap input:focus{border-color:var(--neon2);}
+.search-wrap input::placeholder{color:var(--muted);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;}
+.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;cursor:pointer;min-width:130px;}
+.filter-active{border-color:var(--neon2)!important;color:var(--neon)!important;}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn-primary{background:var(--neon);color:#000;font-weight:600;}
+.btn-primary:hover{background:var(--neon2);}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border2);}
+.btn-export{background:var(--surface2);color:var(--muted2);border:1px solid var(--border);}
+.btn-export:hover{border-color:var(--neon2);color:var(--neon);}
+.count-badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--muted2);}
+.count-badge b{color:var(--neon);}
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-tag{display:inline-flex;align-items:center;gap:6px;background:var(--neon-dim);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--neon);}
+.filter-tag button{background:none;border:none;color:var(--neon);cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;}
+table{width:100%;border-collapse:collapse;min-width:600px;}
+thead th{text-align:left;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+td{padding:11px 14px;font-size:13px;vertical-align:middle;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+td.mono{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);}
+td.name{font-weight:500;}
+td.value{font-family:'JetBrains Mono',monospace;color:var(--neon);font-weight:500;}
+.actions-td{display:flex;gap:5px;}
+.btn-icon{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.15s;}
+.btn-icon:hover{background:var(--surface3);color:var(--text);border-color:var(--border2);}
+.btn-icon.del:hover{background:rgba(255,77,109,0.12);color:var(--red);border-color:rgba(255,77,109,0.3);}
+.btn-icon.move:hover{background:rgba(77,159,255,0.12);color:var(--blue);border-color:rgba(77,159,255,0.3);}
+.empty{text-align:center;padding:60px 0;color:var(--muted2);}
+.empty span{display:block;font-size:28px;margin-bottom:8px;}
+.state-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--neon-dim);color:var(--neon);border:1px solid var(--border2);}
+
+/* OLD KANBAN (CRM tabs) */
+#kanban-crm{display:none;padding:20px 28px 28px;}
+.kanban-crm-search{margin-bottom:16px;position:relative;max-width:320px;}
+.kanban-crm-search input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;}
+.kanban-crm-search input:focus{border-color:var(--neon2);}
+.kanban-crm-search input::placeholder{color:var(--muted);}
+.kanban-crm-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;}
+.kanban-crm-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:flex-start;}
+.kanban-crm-col{flex-shrink:0;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 180px);}
+.kanban-crm-col.drag-over{border-color:var(--neon2);background:var(--surface2);}
+.kanban-crm-col-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.kanban-crm-col-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;}
+.kanban-crm-col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.kanban-crm-col-count{margin-left:auto;font-size:11px;color:var(--muted2);background:var(--surface2);padding:2px 8px;border-radius:10px;}
+.kanban-crm-cards{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;}
+.kanban-crm-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:grab;transition:all 0.15s;user-select:none;position:relative;}
+.kanban-crm-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+.kanban-crm-card.dragging{opacity:0.4;}
+.kanban-crm-card-name{font-size:13px;font-weight:500;margin-bottom:6px;}
+.kanban-crm-card-meta{display:flex;flex-direction:column;gap:3px;}
+.kanban-crm-card-meta span{font-size:11px;color:var(--muted2);}
+.kanban-crm-card-state{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:var(--neon-dim);color:var(--neon);margin-top:4px;}
+.kanban-crm-card-bar{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px;}
+.kanban-crm-empty{text-align:center;padding:24px 0;color:var(--muted);font-size:12px;}
+
+/* NEW KANBAN */
+#kanban{display:none;}
+.kanban-topbar{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;}
+.kanban-topbar h2{font-size:16px;font-weight:700;margin-right:8px;}
+.kanban-search-wrap{position:relative;flex:1;max-width:300px;}
+.kanban-search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px 7px 32px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;}
+.kanban-search-wrap input:focus{border-color:var(--neon2);}
+.kanban-search-wrap input::placeholder{color:var(--muted);}
+.kanban-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+.kanban-board{display:flex;gap:14px;padding:20px 28px;overflow-x:auto;align-items:flex-start;min-height:calc(100vh - 140px);}
+.kanban-board::-webkit-scrollbar{height:6px;}
+.kanban-col{flex-shrink:0;width:260px;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 180px);}
+.kanban-col.drag-over{border-color:var(--neon2);background:rgba(0,255,135,0.04);}
+.kanban-col-header{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.kanban-col-name{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text);margin-bottom:4px;}
+.kanban-col-count{font-size:11px;color:var(--muted2);}
+.kanban-col-bar{height:2px;border-radius:2px;margin-top:8px;}
+.kanban-cards{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;}
+.kanban-cards::-webkit-scrollbar{width:3px;}
+.kanban-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 14px 10px;cursor:pointer;transition:all 0.15s;user-select:none;position:relative;}
+.kanban-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,0.4);}
+.kanban-card.dragging{opacity:0.3;cursor:grabbing;}
+.kanban-card-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.kanban-card-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted2);background:var(--surface3);padding:2px 6px;border-radius:4px;}
+.kanban-card-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:auto;}
+.kanban-card-status.nao{background:rgba(255,77,109,0.15);color:var(--red);}
+.kanban-card-status.and{background:rgba(77,159,255,0.15);color:var(--blue);}
+.kanban-card-status.ok{background:rgba(0,255,135,0.15);color:var(--neon);}
+.kanban-card-name{font-size:13px;font-weight:600;margin-bottom:6px;line-height:1.3;}
+.kanban-card-info{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+.kanban-card-info span{font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:5px;}
+.kanban-card-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);}
+.kanban-card-resp{font-size:10px;color:var(--muted2);}
+.kanban-card-grip{font-size:11px;color:var(--muted);cursor:grab;}
+.kanban-empty{text-align:center;padding:20px 0;color:var(--muted);font-size:12px;}
+
+/* CARD DETAIL */
+#cardDetail{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:500;overflow-y:auto;backdrop-filter:blur(4px);}
+.card-detail-wrap{max-width:900px;margin:0 auto;padding:20px;}
+.card-detail-inner{background:var(--surface);border:1px solid var(--border2);border-radius:16px;overflow:hidden;}
+.card-detail-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:16px;}
+.card-detail-back{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;padding:0;font-family:'Inter',sans-serif;flex-shrink:0;margin-top:4px;}
+.card-detail-back:hover{color:var(--text);}
+.card-detail-title{flex:1;}
+.card-detail-title h2{font-size:18px;font-weight:700;margin-bottom:6px;}
+.card-detail-title .col-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted2);background:var(--surface2);padding:4px 10px;border-radius:6px;border:1px solid var(--border);}
+.card-detail-status{flex-shrink:0;}
+.status-select{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;cursor:pointer;}
+.card-detail-body{padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.detail-section{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.detail-section.full{grid-column:1/-1;}
+.detail-section-title{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.detail-field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+.detail-field:last-child{margin-bottom:0;}
+.detail-field label{font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);}
+.detail-field input,.detail-field textarea,.detail-field select{background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;width:100%;}
+.detail-field input:focus,.detail-field textarea:focus{border-color:var(--neon2);}
+.detail-field textarea{resize:vertical;min-height:60px;}
+.detail-field select option{background:var(--surface2);}
+.detail-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ANOTAÇÕES */
+.nota-item{background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;}
+.nota-item:last-child{margin-bottom:0;}
+.nota-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.nota-autor{font-size:11px;font-weight:600;color:var(--neon);}
+.nota-data{font-size:10px;color:var(--muted);}
+.nota-texto{font-size:13px;color:var(--text);line-height:1.5;}
+.nota-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;}
+.nota-del:hover{color:var(--red);}
+.nota-input{display:flex;gap:8px;margin-top:10px;}
+.nota-input textarea{flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;resize:none;min-height:60px;}
+.nota-input textarea:focus{border-color:var(--neon2);}
+
+/* ANEXOS */
+.anexo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:12px;}
+.anexo-item{background:var(--surface3);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative;cursor:pointer;}
+.anexo-item:hover .anexo-del{opacity:1;}
+.anexo-img{width:100%;height:90px;object-fit:cover;display:block;}
+.anexo-file{width:100%;height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
+.anexo-file-icon{font-size:24px;}
+.anexo-file-name{font-size:10px;color:var(--muted2);text-align:center;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;}
+.anexo-label{font-size:10px;color:var(--muted2);padding:4px 8px;border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.anexo-del{position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(255,77,109,0.9);border:none;border-radius:50%;color:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;}
+.upload-zone{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;}
+.upload-zone:hover{border-color:var(--neon);background:var(--neon-dim);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-zone p{font-size:13px;color:var(--muted2);}
+.upload-zone span{font-size:11px;color:var(--muted);display:block;margin-top:4px;}
+
+.save-btn-wrap{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.overlay.hidden{display:none;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;padding:28px;}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:20px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-group label{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);}
+.form-group input,.form-group textarea,.form-group select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--neon2);}
+.form-group textarea{resize:vertical;min-height:70px;}
+.form-group select option{background:var(--surface2);}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.move-modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:420px;padding:28px;}
+.move-modal h2{font-size:16px;font-weight:700;margin-bottom:6px;}
+.move-subtitle{font-size:13px;color:var(--muted2);margin-bottom:20px;}
+.move-options{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;max-height:300px;overflow-y:auto;}
+.move-option{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:all 0.15s;}
+.move-option:hover{border-color:var(--border2);}
+.move-option.selected{border-color:var(--blue);background:rgba(77,159,255,0.08);}
+.move-option-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* NEW KANBAN MODAL */
+.kanban-new-modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:520px;padding:28px;}
+.kanban-new-modal h2{font-size:16px;font-weight:700;margin-bottom:20px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:600;transform:translateY(80px);opacity:0;transition:all 0.3s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-color:rgba(0,255,135,0.4);color:var(--neon);}
+.toast.error{border-color:rgba(255,77,109,0.4);color:var(--red);}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px 0;gap:10px;color:var(--muted2);font-size:13px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--neon);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo"><div class="login-logo-icon">☀️</div><div class="login-logo-text">Conexão <span>Solar</span></div></div>
+    <div class="login-group"><label>Email</label><input type="email" id="loginEmail" placeholder="seu@email.com"></div>
+    <div class="login-group"><label>Senha</label><input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-login" id="btnLogin" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="loginError">Email ou senha incorretos.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo"><div class="logo-icon">☀️</div><div class="logo-text">Conexão <span>Solar</span></div></div>
+    <div class="header-right">
+      <div class="status-dot"><div class="dot-live"></div> Ao vivo</div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showSection('dashboard',this)">Dashboard</button>
+        <button class="nav-tab" onclick="showSection('crm',this)">CRM</button>
+        <button class="nav-tab" onclick="showSection('kanban-crm',this)">Kanban CRM</button>
+        <button class="nav-tab" onclick="showSection('kanban',this)">Banco de Projetos</button>
+      </div>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span id="userEmail"></span>
+        <button class="btn-logout" onclick="doLogout()">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <div style="padding:24px 28px">
+      <div class="kpi-grid" id="kpiGrid"><div class="loading"><div class="spinner"></div> Carregando...</div></div>
+      <div class="section-title">Análise por categoria</div>
+      <div class="charts-row">
+        <div class="chart-card wide"><div class="chart-title">Valor total por categoria (R$)</div><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Distribuição de clientes</div><div class="chart-wrap"><canvas id="doughnutChart"></canvas></div></div>
+      </div>
+      <div class="section-title">Detalhamento</div>
+      <div class="charts-row" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+        <div class="chart-card"><div class="chart-title">Top 10 estados</div><div class="chart-wrap" style="height:260px"><canvas id="stateChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Valor médio por categoria</div><div class="chart-wrap" style="height:260px"><canvas id="avgChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRM -->
+  <div id="crm">
+    <div class="crm-header"><div class="tabs-scroll" id="tabsBar"></div></div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="searchInput" placeholder="Buscar..."></div>
+      <select class="filter-select" id="filterEstado" onchange="applyFilters()"><option value="">Todos os estados</option></select>
+      <select class="filter-select" id="filterResponsavel" onchange="applyFilters()"><option value="">Todos os responsáveis</option></select>
+      <button class="btn btn-primary" onclick="openModal()">+ Novo</button>
+      <button class="btn btn-export" onclick="exportCSV()">⬇️ Exportar CSV</button>
+      <div class="count-badge">Total: <b id="countTotal">0</b></div>
+    </div>
+    <div id="filterBar" class="filter-bar" style="display:none"></div>
+    <div class="table-wrap"><div id="tableContainer"></div></div>
+  </div>
+
+  <!-- KANBAN CRM -->
+  <div id="kanban-crm">
+    <div class="kanban-crm-search"><span class="kanban-crm-search-icon">🔍</span><input type="text" id="kanbanCrmSearch" placeholder="Buscar cliente..." oninput="filterKanbanCrm(this.value)"></div>
+    <div class="kanban-crm-board" id="kanbanCrmBoard"></div>
+  </div>
+
+  <!-- BANCO DE PROJETOS KANBAN -->
+  <div id="kanban">
+    <div class="kanban-topbar">
+      <h2>🏗️ Banco de Projetos</h2>
+      <div class="kanban-search-wrap"><span class="kanban-search-icon">🔍</span><input type="text" id="kanbanSearch" placeholder="Buscar projeto..." oninput="filterKanban(this.value)"></div>
+      <button class="btn btn-primary" style="margin-left:auto" onclick="openNewProjectModal()">+ Novo Projeto</button>
+    </div>
+    <div class="kanban-board" id="kanbanBoard"></div>
+  </div>
+</div>
+
+<!-- CARD DETAIL -->
+<div id="cardDetail">
+  <div class="card-detail-wrap">
+    <div class="card-detail-inner">
+      <div class="card-detail-header">
+        <button class="card-detail-back" onclick="closeCardDetail()">← Voltar</button>
+        <div class="card-detail-title">
+          <h2 id="detailTitle"></h2>
+          <div class="col-badge"><span id="detailColName"></span></div>
+        </div>
+        <div class="card-detail-status">
+          <select class="status-select" id="detailStatus" onchange="updateStatus(this.value)">
+            <option value="NÃO INICIADO">NÃO INICIADO</option>
+            <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+            <option value="CONCLUÍDO">CONCLUÍDO</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-detail-body">
+        <div class="detail-section">
+          <div class="detail-section-title">Informações do Cliente</div>
+          <div class="detail-field"><label>Nome</label><input type="text" id="df_nome_cliente"></div>
+          <div class="detail-field-row">
+            <div class="detail-field"><label>Telefone</label><input type="text" id="df_telefone"></div>
+            <div class="detail-field"><label>Email</label><input type="text" id="df_email"></div>
+          </div>
+          <div class="detail-field-row">
+            <div class="detail-field"><label>CPF/CNPJ</label><input type="text" id="df_cpf_cnpj"></div>
+            <div class="detail-field"><label>Responsável</label><input type="text" id="df_responsavel"></div>
+          </div>
+          <div class="detail-field-row">
+            <div class="detail-field"><label>Cidade</label><input type="text" id="df_cidade"></div>
+            <div class="detail-field"><label>Estado</label><input type="text" id="df_estado"></div>
+          </div>
+          <div class="detail-field"><label>Endereço</label><input type="text" id="df_endereco"></div>
+          <div class="detail-field"><label>Proposta</label><input type="text" id="df_proposta"></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Anotações</div>
+          <div id="notasList"></div>
+          <div class="nota-input">
+            <textarea id="notaTexto" placeholder="Adicionar anotação..."></textarea>
+            <button class="btn btn-primary" style="align-self:flex-end" onclick="addNota()">+</button>
+          </div>
+        </div>
+        <div class="detail-section full">
+          <div class="detail-section-title">
+            Anexos e Fotos
+            <span style="font-size:11px;color:var(--muted2)" id="anexoCount"></span>
+          </div>
+          <div class="anexo-grid" id="anexoGrid"></div>
+          <div class="upload-zone">
+            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="uploadAnexos(this.files)">
+            <p>📎 Clique ou arraste arquivos aqui</p>
+            <span>Imagens, PDF, Word, Excel</span>
+          </div>
+        </div>
+      </div>
+      <div class="save-btn-wrap">
+        <button class="btn btn-ghost" onclick="closeCardDetail()">Fechar</button>
+        <button class="btn btn-primary" onclick="saveCardDetail()">💾 Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO PROJETO KANBAN -->
+<div class="overlay hidden" id="newProjectOverlay">
+  <div class="kanban-new-modal">
+    <h2>Novo Projeto</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome do Cliente</label><input type="text" id="np_nome" placeholder="Nome completo"></div>
+      <div class="form-group"><label>Telefone</label><input type="text" id="np_tel" placeholder="(00) 00000-0000"></div>
+      <div class="form-group"><label>Email</label><input type="text" id="np_email" placeholder="email@email.com"></div>
+      <div class="form-group"><label>CPF/CNPJ</label><input type="text" id="np_cpf"></div>
+      <div class="form-group"><label>Responsável</label><input type="text" id="np_resp"></div>
+      <div class="form-group"><label>Cidade</label><input type="text" id="np_cidade"></div>
+      <div class="form-group"><label>Estado</label><input type="text" id="np_estado" placeholder="SP"></div>
+      <div class="form-group full"><label>Endereço</label><input type="text" id="np_end"></div>
+      <div class="form-group full"><label>Coluna inicial</label>
+        <select id="np_coluna"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewProjectModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewProject()">Criar Projeto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO/EDITAR CRM -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Novo registro</h2>
+    <div class="form-grid" id="formFields"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRecord()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MOVER CRM -->
+<div class="overlay hidden" id="moveOverlay">
+  <div class="move-modal">
+    <h2>Mover cliente</h2>
+    <div class="move-subtitle" id="moveSubtitle"></div>
+    <div class="move-options" id="moveOptions"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeMoveModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmMove()">Mover</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://xsfgtgffwpcklllnfaos.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzZmd0Z2Zmd3Bja2xsbG5mYW9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTg4MTksImV4cCI6MjA4OTQzNDgxOX0._17rm9o2dTJL9MrVivD5aEGyM7bD3MIgsdL9_peH3PQ';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// KANBAN COLUMNS
+const KANBAN_COLS=[
+  {id:'col1',name:'AGUARDANDO ANÁLISE DE PADRÃO',color:'#FFB547'},
+  {id:'col2',name:'ANÁLISE DE PADRÃO CONCLUIDA',color:'#00FF87'},
+  {id:'col3',name:'ANÁLISE ENVIADA PARA CLIENTE COM ADEQUAÇÃO',color:'#4D9FFF'},
+  {id:'col4',name:'ANÁLISE ENVIADA PARA CLIENTE SEM ADEQUAÇÃO',color:'#B47FFF'},
+  {id:'col5',name:'ASSINATURA DE CONTRATO',color:'#00CFFF'},
+  {id:'col6',name:'ARQUIVOS DE CONTRATOS',color:'#00FF87'},
+  {id:'col7',name:'PENDENTE AGENDAMENTO DE VT',color:'#FFB547'},
+  {id:'col8',name:'VISITA AGENDADA',color:'#4D9FFF'},
+  {id:'col9',name:'PENDENTE NOVA PROPOSTA',color:'#FF9A3C'},
+  {id:'col10',name:'VISITA FEITA/ SUBIR FOTOS NO SISTEMA REVO',color:'#B47FFF'},
+  {id:'col11',name:'PENDENTE ADEQUAÇÃO DO PADRÃO',color:'#FF4D6D'},
+  {id:'col12',name:'FOTOS NO SISTEMA REVO/ AGUARDANDO APROVAÇÃO',color:'#00CFFF'},
+  {id:'col13',name:'EM DIMENSIONAMENTO',color:'#FFB547'},
+  {id:'col14',name:'PENDENTE INSTALADOR REGIÃO/ DIMENSIONAMENTO TRAVADO',color:'#FF4D6D'},
+  {id:'col15',name:'DIMENSIONAMENTO FEITO/SISTEMA DA REVO',color:'#00FF87'},
+  {id:'col16',name:'PARECER DE ACESSO',color:'#4D9FFF'},
+  {id:'col17',name:'Instalação Antiga',color:'#888'},
+  {id:'col18',name:'INSTALAÇÃO',color:'#B47FFF'},
+  {id:'col19',name:'INSTALAÇÃO AGENDADA',color:'#00CFFF'},
+  {id:'col20',name:'INSTALAÇÃO PENDENTE INFORMAÇÃO/FOTOS',color:'#FF9A3C'},
+  {id:'col21',name:'INSTALAÇÃO CONCLUIDA/ VISTORIA',color:'#00FF87'},
+  {id:'col22',name:'EMISSÃO DE NF',color:'#FFB547'},
+  {id:'col23',name:'FINALIZADO',color:'#00FF87'},
+  {id:'col24',name:'CLIENTE TRAVADO REVO',color:'#FF4D6D'},
+];
+
+const TABLES={
+  clientes_aprovados_26:{label:'Aprovados 26',color:'#00FF87',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','nr_cliente','nr_licenciado','retorno','responsavel'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','Nº Cliente','Nº Licenciado','Retorno','Responsável'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','responsavel']},
+  arquivos_para_contrato:{label:'Arq. Contrato',color:'#FFB547',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','kwp','responsavel','retorno'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','KWP','Responsável','Retorno'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','kwp','responsavel']},
+  clientes_em_contrato:{label:'Em Contrato',color:'#4D9FFF',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','nr_cliente','nr_licenciado','kwp','retorno'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','Nº Cliente','Nº Licenciado','KWP','Retorno'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','kwp']},
+  clientes_em_visita_tecnica:{label:'Visita Técnica',color:'#B47FFF',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','kwp','data_contrato','parceiro','visita_inicial','responsavel','status','data_vt_oficial','obs'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','KWP','Data Contrato','Parceiro','Visita Inicial','Responsável','Status','Data VT Oficial','OBS'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','status','responsavel']},
+  clientes_desistencia:{label:'Desistência',color:'#FF4D6D',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','retorno'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','Retorno'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','retorno']},
+  clientes_aprovados_25:{label:'Aprovados 25',color:'#00CFFF',fields:['proposta','nome_cliente','cidade','estado','valor_inicial','id_licenciado','nr_cliente','nr_licenciado','retorno','responsavel'],labels:['Proposta','Nome Cliente','Cidade','Estado','Valor Inicial','ID Licenciado','Nº Cliente','Nº Licenciado','Retorno','Responsável'],main:['proposta','nome_cliente','cidade','estado','valor_inicial','responsavel']},
+  clientes_parados_adequacao:{label:'Parados Adequação',color:'#FF9A3C',fields:['proposta_antiga','nome_cliente','cidade','estado','valor_inicial','kwp','nova_proposta'],labels:['Proposta Antiga','Nome Cliente','Cidade','Estado','Valor Inicial','KWP','Nova Proposta'],main:['proposta_antiga','nome_cliente','cidade','estado','valor_inicial','kwp','nova_proposta']}
+};
+
+const COMMON_FIELDS=['nome_cliente','cidade','estado','valor_inicial'];
+let currentTable=Object.keys(TABLES)[0];
+let allRecords=[],filteredRecords=[];
+let editingId=null,movingRecord=null,moveDestination=null;
+let barChartInst,doughnutInst,stateInst,avgInst;
+let kanbanCrmData={};
+let crmDragCard=null;
+let kanbanData=[];
+let dragProj=null;
+let currentDetailId=null;
+let currentUser=null;
+
+// AUTH
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPassword').value;
+  const btn=document.getElementById('btnLogin');
+  const err=document.getElementById('loginError');
+  err.style.display='none';btn.disabled=true;btn.textContent='Entrando...';
+  const{error}=await db.auth.signInWithPassword({email,password});
+  if(error){err.style.display='block';btn.disabled=false;btn.textContent='Entrar';}
+}
+async function doLogout(){
+  await db.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+db.auth.onAuthStateChange((event,session)=>{
+  if(session){
+    currentUser=session.user;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('userEmail').textContent=session.user.email;
+    document.getElementById('userAvatar').textContent=session.user.email[0].toUpperCase();
+    // Fill kanban col select
+    const sel=document.getElementById('np_coluna');
+    sel.innerHTML=KANBAN_COLS.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+    loadDashboard();loadData();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
+});
+
+function showSection(id,btn){
+  ['dashboard','crm','kanban-crm','kanban'].forEach(s=>{document.getElementById(s).style.display=s===id?'block':'none';});
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(id==='kanban-crm')loadKanbanCrm();
+  if(id==='kanban')loadKanban();
+}
+
+function parseValue(v){if(!v)return 0;return parseFloat(v.replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'))||0;}
+function formatBRL(n){return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+Chart.defaults.color='#4A6358';Chart.defaults.borderColor='rgba(0,255,135,0.06)';Chart.defaults.font.family='Inter';
+
+async function loadDashboard(){
+  const results=await Promise.all(Object.keys(TABLES).map(t=>db.from(t).select('*')));
+  const dataMap={};
+  Object.keys(TABLES).forEach((t,i)=>{dataMap[t]=results[i].data||[];});
+  const totals={},counts={},avgs={};
+  let grandTotal=0,grandCount=0;const stateCounts={};
+  Object.keys(TABLES).forEach(t=>{
+    const rows=dataMap[t];
+    const sum=rows.reduce((a,r)=>a+parseValue(r.valor_inicial),0);
+    totals[t]=sum;counts[t]=rows.length;avgs[t]=rows.length?sum/rows.length:0;
+    grandTotal+=sum;grandCount+=rows.length;
+    rows.forEach(r=>{const uf=(r.estado||'').trim().toUpperCase();if(uf&&uf.length===2)stateCounts[uf]=(stateCounts[uf]||0)+1;});
+  });
+  document.getElementById('kpiGrid').innerHTML=`
+    <div class="kpi-card"><span class="kpi-icon">💰</span><div class="kpi-label">Valor Total em Aberto</div><div class="kpi-value green">${formatBRL(grandTotal)}</div><div class="kpi-sub">Soma de todas as categorias</div></div>
+    <div class="kpi-card blue"><span class="kpi-icon">👥</span><div class="kpi-label">Total de Clientes</div><div class="kpi-value blue">${grandCount.toLocaleString('pt-BR')}</div><div class="kpi-sub">Em todas as tabelas</div></div>
+    <div class="kpi-card amber"><span class="kpi-icon">📊</span><div class="kpi-label">Ticket Médio</div><div class="kpi-value amber">${formatBRL(grandCount?grandTotal/grandCount:0)}</div><div class="kpi-sub">Valor médio por cliente</div></div>
+    <div class="kpi-card"><span class="kpi-icon">✅</span><div class="kpi-label">Clientes Aprovados</div><div class="kpi-value green">${((counts['clientes_aprovados_26']||0)+(counts['clientes_aprovados_25']||0)).toLocaleString('pt-BR')}</div><div class="kpi-sub">Aprovados 25 + 26</div></div>
+    <div class="kpi-card red"><span class="kpi-icon">❌</span><div class="kpi-label">Desistências</div><div class="kpi-value" style="color:var(--red)">${(counts['clientes_desistencia']||0).toLocaleString('pt-BR')}</div><div class="kpi-sub">Clientes desistentes</div></div>
+    <div class="kpi-card"><span class="kpi-icon">🔧</span><div class="kpi-label">Em Visita Técnica</div><div class="kpi-value">${(counts['clientes_em_visita_tecnica']||0).toLocaleString('pt-BR')}</div><div class="kpi-sub">Aguardando visita</div></div>
+  `;
+  const labels=Object.keys(TABLES).map(t=>TABLES[t].label);
+  const colors=Object.keys(TABLES).map(t=>TABLES[t].color);
+  if(barChartInst)barChartInst.destroy();
+  barChartInst=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels,datasets:[{data:Object.keys(TABLES).map(t=>totals[t]),backgroundColor:colors.map(c=>c+'33'),borderColor:colors,borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>formatBRL(ctx.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(0,255,135,0.05)'},ticks:{callback:v=>'R$ '+Math.round(v/1000)+'k',font:{size:10}}}}}});
+  if(doughnutInst)doughnutInst.destroy();
+  doughnutInst=new Chart(document.getElementById('doughnutChart'),{type:'doughnut',data:{labels,datasets:[{data:Object.keys(TABLES).map(t=>counts[t]),backgroundColor:colors.map(c=>c+'55'),borderColor:colors,borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:10}}}}});
+  const topStates=Object.entries(stateCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(stateInst)stateInst.destroy();
+  stateInst=new Chart(document.getElementById('stateChart'),{type:'bar',data:{labels:topStates.map(s=>s[0]),datasets:[{data:topStates.map(s=>s[1]),backgroundColor:'#00FF8733',borderColor:'#00FF87',borderWidth:1.5,borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,255,135,0.05)'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+  if(avgInst)avgInst.destroy();
+  avgInst=new Chart(document.getElementById('avgChart'),{type:'bar',data:{labels,datasets:[{data:Object.keys(TABLES).map(t=>avgs[t]),backgroundColor:colors.map(c=>c+'33'),borderColor:colors,borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>formatBRL(ctx.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,255,135,0.05)'},ticks:{callback:v=>'R$ '+Math.round(v/1000)+'k',font:{size:10}}}}}});
+}
+
+// CRM TABS
+const tabsBar=document.getElementById('tabsBar');
+Object.entries(TABLES).forEach(([key,t])=>{
+  const btn=document.createElement('button');
+  btn.className='tab-btn'+(key===currentTable?' active':'');
+  btn.textContent=t.label;btn.onclick=()=>switchTab(key,btn);
+  tabsBar.appendChild(btn);
+});
+function switchTab(key,btn){
+  currentTable=key;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('searchInput').value='';
+  document.getElementById('filterEstado').value='';
+  document.getElementById('filterResponsavel').value='';
+  loadData();
+}
+async function loadData(){
+  document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
+  const{data,error}=await db.from(currentTable).select('*').order('id',{ascending:false});
+  if(error){document.getElementById('tableContainer').innerHTML='<div class="empty"><span>⚠️</span>Erro ao carregar</div>';return;}
+  allRecords=data||[];populateFilters();applyFilters();
+}
+function populateFilters(){
+  const t=TABLES[currentTable];
+  const estados=[...new Set(allRecords.map(r=>(r.estado||'').trim().toUpperCase()).filter(v=>v&&v.length===2))].sort();
+  const estSel=document.getElementById('filterEstado');const curEst=estSel.value;
+  estSel.innerHTML='<option value="">Todos os estados</option>'+estados.map(e=>`<option value="${e}" ${e===curEst?'selected':''}>${e}</option>`).join('');
+  const hasResp=t.fields.includes('responsavel');const respSel=document.getElementById('filterResponsavel');
+  if(hasResp){
+    const resps=[...new Set(allRecords.map(r=>(r.responsavel||'').trim().toUpperCase()).filter(v=>v))].sort();
+    const curResp=respSel.value;
+    respSel.innerHTML='<option value="">Todos os responsáveis</option>'+resps.map(r=>`<option value="${r}" ${r===curResp?'selected':''}>${r}</option>`).join('');
+    respSel.style.display='';
+  } else {respSel.innerHTML='<option value="">Todos os responsáveis</option>';respSel.style.display='none';}
+}
+function applyFilters(){
+  const search=document.getElementById('searchInput').value.toLowerCase();
+  const estado=document.getElementById('filterEstado').value;
+  const resp=document.getElementById('filterResponsavel').value;
+  const t=TABLES[currentTable];
+  document.getElementById('filterEstado').classList.toggle('filter-active',!!estado);
+  document.getElementById('filterResponsavel').classList.toggle('filter-active',!!resp);
+  filteredRecords=allRecords.filter(r=>{
+    const ms=!search||t.fields.some(f=>(r[f]||'').toLowerCase().includes(search));
+    const me=!estado||(r.estado||'').trim().toUpperCase()===estado;
+    const mr=!resp||(r.responsavel||'').trim().toUpperCase()===resp;
+    return ms&&me&&mr;
+  });
+  const tags=[];if(estado)tags.push(`Estado: ${estado}`);if(resp)tags.push(`Responsável: ${resp}`);
+  const bar=document.getElementById('filterBar');
+  if(tags.length){bar.style.display='flex';bar.innerHTML=tags.map((tag,i)=>`<div class="filter-tag">${tag}<button onclick="clearFilter(${i})">×</button></div>`).join('')+`<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="clearAllFilters()">Limpar tudo</button>`;}
+  else bar.style.display='none';
+  renderTable(filteredRecords);
+}
+function clearFilter(idx){const fields=['filterEstado','filterResponsavel'];const active=fields.filter(f=>document.getElementById(f).value);if(active[idx]){document.getElementById(active[idx]).value='';applyFilters();}}
+function clearAllFilters(){document.getElementById('filterEstado').value='';document.getElementById('filterResponsavel').value='';applyFilters();}
+document.getElementById('searchInput').addEventListener('input',applyFilters);
+function renderTable(records){
+  const t=TABLES[currentTable];
+  document.getElementById('countTotal').textContent=records.length;
+  if(!records.length){document.getElementById('tableContainer').innerHTML='<div class="empty"><span>📋</span>Nenhum registro encontrado</div>';return;}
+  let html='<table><thead><tr>';
+  t.main.forEach(f=>{html+=`<th>${t.labels[t.fields.indexOf(f)]}</th>`;});
+  html+='<th>Ações</th></tr></thead><tbody>';
+  records.forEach(r=>{
+    html+='<tr>';
+    t.main.forEach(f=>{
+      let cls='';
+      if(f==='nome_cliente')cls='name';
+      else if(f==='valor_inicial')cls='value';
+      else if(f==='proposta'||f==='proposta_antiga')cls='mono';
+      const val=r[f]||'';
+      const disp=f==='estado'&&val?`<span class="state-badge">${val}</span>`:(val||'<span style="opacity:.25">—</span>');
+      html+=`<td class="${cls}" title="${val}">${disp}</td>`;
+    });
+    html+=`<td><div class="actions-td"><button class="btn-icon" onclick="openModal(${r.id})" title="Editar">✏️</button><button class="btn-icon move" onclick="openMoveModal(${r.id})" title="Mover">↗️</button><button class="btn-icon del" onclick="deleteRecord(${r.id})" title="Excluir">🗑️</button></div></td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('tableContainer').innerHTML=html;
+}
+function exportCSV(){
+  const t=TABLES[currentTable];
+  const records=filteredRecords.length?filteredRecords:allRecords;
+  const csv='\uFEFF'+[t.labels.join(','),...records.map(r=>t.fields.map(f=>`"${(r[f]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`${TABLES[currentTable].label}_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+  a.click();showToast('✓ CSV exportado!','success');
+}
+
+// KANBAN CRM (old)
+async function loadKanbanCrm(){
+  const board=document.getElementById('kanbanCrmBoard');
+  board.innerHTML=Object.keys(TABLES).map(k=>`<div class="kanban-crm-col" id="crmcol_${k}" data-table="${k}" ondragover="crmDragOver(event,this)" ondrop="crmDrop(event,'${k}')" ondragleave="crmDragLeave(this)"><div class="kanban-crm-col-header"><div class="kanban-crm-col-title"><div class="kanban-crm-col-dot" style="background:${TABLES[k].color}"></div>${TABLES[k].label}<span class="kanban-crm-col-count" id="crmcnt_${k}">...</span></div></div><div class="kanban-crm-cards" id="crmcards_${k}">Carregando...</div></div>`).join('');
+  const results=await Promise.all(Object.keys(TABLES).map(t=>db.from(t).select('*').order('id',{ascending:false})));
+  Object.keys(TABLES).forEach((t,i)=>{kanbanCrmData[t]=results[i].data||[];renderKanbanCrmCol(t);});
+}
+function renderKanbanCrmCol(tableKey,filter=''){
+  const records=kanbanCrmData[tableKey]||[];
+  const filtered=filter?records.filter(r=>(r.nome_cliente||'').toLowerCase().includes(filter)||(r.cidade||'').toLowerCase().includes(filter)):records;
+  document.getElementById('crmcnt_'+tableKey).textContent=filtered.length;
+  const c=document.getElementById('crmcards_'+tableKey);
+  if(!filtered.length){c.innerHTML='<div class="kanban-crm-empty">Sem clientes</div>';return;}
+  c.innerHTML=filtered.map(r=>`<div class="kanban-crm-card" draggable="true" data-id="${r.id}" data-table="${tableKey}" ondragstart="crmDragStart(event,'${tableKey}',${r.id})" ondragend="crmDragEnd(event)"><div class="kanban-crm-card-bar" style="background:${TABLES[tableKey].color}"></div><div class="kanban-crm-card-name">${r.nome_cliente||'—'}</div><div class="kanban-crm-card-meta"><span>📍 ${r.cidade||'—'}</span>${r.estado?`<span class="kanban-crm-card-state">${r.estado.trim().toUpperCase()}</span>`:''}</div></div>`).join('');
+}
+function filterKanbanCrm(val){const q=val.toLowerCase();Object.keys(TABLES).forEach(t=>renderKanbanCrmCol(t,q));}
+function crmDragStart(e,tableKey,id){crmDragCard={id,tableKey};e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
+function crmDragEnd(e){e.target.classList.remove('dragging');}
+function crmDragOver(e,col){e.preventDefault();col.classList.add('drag-over');}
+function crmDragLeave(col){col.classList.remove('drag-over');}
+async function crmDrop(e,targetTable){
+  e.preventDefault();document.querySelectorAll('.kanban-crm-col').forEach(c=>c.classList.remove('drag-over'));
+  if(!crmDragCard||targetTable===crmDragCard.tableKey)return;
+  const srcTable=crmDragCard.tableKey;const id=crmDragCard.id;
+  const record=kanbanCrmData[srcTable].find(r=>r.id===id);if(!record)return;
+  const dstT=TABLES[targetTable];const newRecord={};
+  dstT.fields.forEach(f=>{if(record[f]!==undefined)newRecord[f]=record[f];});
+  if(record.proposta&&dstT.fields.includes('proposta_antiga'))newRecord.proposta_antiga=record.proposta;
+  if(record.proposta_antiga&&dstT.fields.includes('proposta'))newRecord.proposta=record.proposta_antiga;
+  const{error:insErr}=await db.from(targetTable).insert([newRecord]);if(insErr){showToast('Erro: '+insErr.message,'error');return;}
+  await db.from(srcTable).delete().eq('id',id);
+  kanbanCrmData[srcTable]=kanbanCrmData[srcTable].filter(r=>r.id!==id);
+  const{data}=await db.from(targetTable).select('*').order('id',{ascending:false}).limit(1);
+  if(data&&data[0])kanbanCrmData[targetTable]=[data[0],...kanbanCrmData[targetTable]];
+  const q=document.getElementById('kanbanCrmSearch').value.toLowerCase();
+  renderKanbanCrmCol(srcTable,q);renderKanbanCrmCol(targetTable,q);
+  showToast(`✓ Movido para ${TABLES[targetTable].label}!`,'success');crmDragCard=null;
+}
+
+// NEW KANBAN - BANCO DE PROJETOS
+async function loadKanban(){
+  const board=document.getElementById('kanbanBoard');
+  board.innerHTML=KANBAN_COLS.map(col=>`
+    <div class="kanban-col" id="kcol_${col.id}" ondragover="kDragOver(event,this)" ondrop="kDrop(event,'${col.name}')" ondragleave="kDragLeave(this)">
+      <div class="kanban-col-header">
+        <div class="kanban-col-name">${col.name}</div>
+        <div class="kanban-col-count" id="kcnt_${col.id}">0 projetos</div>
+        <div class="kanban-col-bar" style="background:${col.color}"></div>
+      </div>
+      <div class="kanban-cards" id="kcards_${col.id}"><div class="kanban-empty">Carregando...</div></div>
+    </div>`).join('');
+  const{data,error}=await db.from('kanban_projetos').select('*').order('id',{ascending:false});
+  if(error){showToast('Erro ao carregar projetos','error');return;}
+  kanbanData=data||[];
+  renderAllKanbanCols();
+}
+
+function renderAllKanbanCols(filter=''){
+  KANBAN_COLS.forEach(col=>{
+    const records=kanbanData.filter(r=>r.coluna===col.name);
+    const filtered=filter?records.filter(r=>(r.nome_cliente||'').toLowerCase().includes(filter)||(r.cidade||'').toLowerCase().includes(filter)||(r.responsavel||'').toLowerCase().includes(filter)):records;
+    document.getElementById('kcnt_'+col.id).textContent=`${filtered.length} projeto${filtered.length!==1?'s':''}`;
+    const c=document.getElementById('kcards_'+col.id);
+    if(!filtered.length){c.innerHTML='<div class="kanban-empty">Sem projetos</div>';return;}
+    c.innerHTML=filtered.map(r=>{
+      const statusCls=r.status==='CONCLUÍDO'?'ok':r.status==='EM ANDAMENTO'?'and':'nao';
+      return `<div class="kanban-card" draggable="true" data-id="${r.id}" ondragstart="kDragStart(event,${r.id})" ondragend="kDragEnd(event)" onclick="openCardDetail(${r.id})">
+        <div class="kanban-card-top">
+          <span class="kanban-card-id"># ${r.id}</span>
+          <span class="kanban-card-status ${statusCls}">${r.status||'NÃO INICIADO'}</span>
+        </div>
+        <div class="kanban-card-name">${r.nome_cliente||'Sem nome'}</div>
+        <div class="kanban-card-info">
+          ${r.telefone?`<span>📞 ${r.telefone}</span>`:''}
+          ${r.cidade?`<span>📍 ${r.cidade}${r.estado?' ('+r.estado+')':''}</span>`:''}
+        </div>
+        <div class="kanban-card-footer">
+          <span class="kanban-card-resp">${r.responsavel||''}</span>
+          <span class="kanban-card-grip">⠿</span>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function filterKanban(val){renderAllKanbanCols(val.toLowerCase());}
+
+function kDragStart(e,id){dragProj=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
+function kDragEnd(e){e.target.classList.remove('dragging');}
+function kDragOver(e,col){e.preventDefault();col.classList.add('drag-over');}
+function kDragLeave(col){col.classList.remove('drag-over');}
+async function kDrop(e,colName){
+  e.preventDefault();document.querySelectorAll('.kanban-col').forEach(c=>c.classList.remove('drag-over'));
+  if(!dragProj)return;
+  const record=kanbanData.find(r=>r.id===dragProj);
+  if(!record||record.coluna===colName){dragProj=null;return;}
+  const{error}=await db.from('kanban_projetos').update({coluna:colName,atualizado_em:new Date().toISOString()}).eq('id',dragProj);
+  if(error){showToast('Erro ao mover','error');return;}
+  record.coluna=colName;
+  renderAllKanbanCols(document.getElementById('kanbanSearch').value.toLowerCase());
+  showToast(`✓ Movido para ${colName.substring(0,30)}...`,'success');
+  dragProj=null;
+}
+
+// CARD DETAIL
+async function openCardDetail(id){
+  currentDetailId=id;
+  const record=kanbanData.find(r=>r.id===id);
+  if(!record)return;
+  const col=KANBAN_COLS.find(c=>c.name===record.coluna);
+  document.getElementById('detailTitle').textContent=record.nome_cliente||'Projeto #'+id;
+  document.getElementById('detailColName').textContent=record.coluna||'—';
+  document.getElementById('detailStatus').value=record.status||'NÃO INICIADO';
+  ['nome_cliente','telefone','email','cpf_cnpj','responsavel','cidade','estado','endereco','proposta'].forEach(f=>{
+    const el=document.getElementById('df_'+f);if(el)el.value=record[f]||'';
+  });
+  document.getElementById('cardDetail').style.display='block';
+  document.body.style.overflow='hidden';
+  loadNotas(id);loadAnexos(id);
+}
+
+function closeCardDetail(){
+  document.getElementById('cardDetail').style.display='none';
+  document.body.style.overflow='';
+  currentDetailId=null;
+}
+
+async function saveCardDetail(){
+  if(!currentDetailId)return;
+  const updates={atualizado_em:new Date().toISOString()};
+  ['nome_cliente','telefone','email','cpf_cnpj','responsavel','cidade','estado','endereco','proposta'].forEach(f=>{
+    const el=document.getElementById('df_'+f);if(el)updates[f]=el.value.trim();
+  });
+  const{error}=await db.from('kanban_projetos').update(updates).eq('id',currentDetailId);
+  if(error){showToast('Erro ao salvar','error');return;}
+  const record=kanbanData.find(r=>r.id===currentDetailId);
+  if(record)Object.assign(record,updates);
+  renderAllKanbanCols(document.getElementById('kanbanSearch').value.toLowerCase());
+  document.getElementById('detailTitle').textContent=updates.nome_cliente||'Projeto #'+currentDetailId;
+  showToast('✓ Salvo!','success');
+}
+
+async function updateStatus(val){
+  if(!currentDetailId)return;
+  await db.from('kanban_projetos').update({status:val}).eq('id',currentDetailId);
+  const record=kanbanData.find(r=>r.id===currentDetailId);if(record)record.status=val;
+  renderAllKanbanCols();showToast('✓ Status atualizado!','success');
+}
+
+// NOTAS
+async function loadNotas(projetoId){
+  const{data}=await db.from('kanban_anotacoes').select('*').eq('projeto_id',projetoId).order('criado_em',{ascending:false});
+  const list=document.getElementById('notasList');
+  if(!data||!data.length){list.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">Nenhuma anotação ainda</div>';return;}
+  list.innerHTML=data.map(n=>`
+    <div class="nota-item">
+      <div class="nota-header">
+        <span class="nota-autor">${n.autor||'Usuário'}</span>
+        <span class="nota-data">${new Date(n.criado_em).toLocaleString('pt-BR')}</span>
+        <button class="nota-del" onclick="deleteNota(${n.id})">×</button>
+      </div>
+      <div class="nota-texto">${n.texto}</div>
+    </div>`).join('');
+}
+
+async function addNota(){
+  const texto=document.getElementById('notaTexto').value.trim();
+  if(!texto||!currentDetailId)return;
+  const{error}=await db.from('kanban_anotacoes').insert([{projeto_id:currentDetailId,texto,autor:currentUser?.email?.split('@')[0]||'Usuário'}]);
+  if(error){showToast('Erro ao adicionar nota','error');return;}
+  document.getElementById('notaTexto').value='';
+  loadNotas(currentDetailId);showToast('✓ Anotação adicionada!','success');
+}
+
+async function deleteNota(id){
+  if(!confirm('Excluir anotação?'))return;
+  await db.from('kanban_anotacoes').delete().eq('id',id);
+  loadNotas(currentDetailId);
+}
+
+// ANEXOS
+async function loadAnexos(projetoId){
+  const{data}=await db.from('kanban_anexos').select('*').eq('projeto_id',projetoId).order('criado_em',{ascending:false});
+  const grid=document.getElementById('anexoGrid');
+  document.getElementById('anexoCount').textContent=data&&data.length?`${data.length} arquivo(s)`:'';
+  if(!data||!data.length){grid.innerHTML='';return;}
+  grid.innerHTML=data.map(a=>{
+    const isImg=a.tipo&&a.tipo.startsWith('image/');
+    return `<div class="anexo-item">
+      ${isImg?`<img class="anexo-img" src="${a.url}" alt="${a.nome}" onclick="window.open('${a.url}','_blank')">`:
+      `<div class="anexo-file" onclick="window.open('${a.url}','_blank')"><div class="anexo-file-icon">${a.tipo?.includes('pdf')?'📄':'📎'}</div><div class="anexo-file-name">${a.nome}</div></div>`}
+      <div class="anexo-label">${a.nome}</div>
+      <button class="anexo-del" onclick="deleteAnexo(${a.id},'${a.nome}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function uploadAnexos(files){
+  if(!files||!files.length||!currentDetailId)return;
+  showToast('Enviando arquivos...','success');
+  for(const file of files){
+    const ext=file.name.split('.').pop();
+    const path=`projeto_${currentDetailId}/${Date.now()}_${file.name}`;
+    const{error:upErr}=await db.storage.from('anexos').upload(path,file,{cacheControl:'3600',upsert:false});
+    if(upErr){showToast('Erro no upload: '+upErr.message,'error');continue;}
+    const{data:urlData}=db.storage.from('anexos').getPublicUrl(path);
+    await db.from('kanban_anexos').insert([{projeto_id:currentDetailId,nome:file.name,url:urlData.publicUrl,tipo:file.type}]);
+  }
+  document.getElementById('fileInput').value='';
+  loadAnexos(currentDetailId);showToast('✓ Arquivos enviados!','success');
+}
+
+async function deleteAnexo(id,nome){
+  if(!confirm(`Excluir ${nome}?`))return;
+  await db.from('kanban_anexos').delete().eq('id',id);
+  loadAnexos(currentDetailId);showToast('Arquivo excluído!','success');
+}
+
+// NEW PROJECT MODAL
+function openNewProjectModal(){document.getElementById('newProjectOverlay').classList.remove('hidden');}
+function closeNewProjectModal(){document.getElementById('newProjectOverlay').classList.add('hidden');}
+async function saveNewProject(){
+  const nome=document.getElementById('np_nome').value.trim();
+  if(!nome){showToast('Nome obrigatório!','error');return;}
+  const record={
+    nome_cliente:nome,telefone:document.getElementById('np_tel').value.trim(),
+    email:document.getElementById('np_email').value.trim(),cpf_cnpj:document.getElementById('np_cpf').value.trim(),
+    responsavel:document.getElementById('np_resp').value.trim(),cidade:document.getElementById('np_cidade').value.trim(),
+    estado:document.getElementById('np_estado').value.trim(),endereco:document.getElementById('np_end').value.trim(),
+    coluna:document.getElementById('np_coluna').value,status:'NÃO INICIADO'
+  };
+  const{data,error}=await db.from('kanban_projetos').insert([record]).select();
+  if(error){showToast('Erro: '+error.message,'error');return;}
+  if(data&&data[0])kanbanData.unshift(data[0]);
+  closeNewProjectModal();
+  renderAllKanbanCols();
+  ['np_nome','np_tel','np_email','np_cpf','np_resp','np_cidade','np_estado','np_end'].forEach(id=>{document.getElementById(id).value='';});
+  showToast('✓ Projeto criado!','success');
+}
+
+// CRM MODALS
+function openModal(id=null){
+  editingId=id;const t=TABLES[currentTable];
+  document.getElementById('modalTitle').textContent=id?'Editar registro':'Novo registro';
+  const record=id?allRecords.find(r=>r.id===id):{};
+  let html='';
+  if(!id)html+=`<div class="form-group full"><label>Adicionar em qual tabela?</label><select id="targetTable" onchange="updateFormForTable(this.value)">${Object.entries(TABLES).map(([k,t])=>`<option value="${k}" ${k===currentTable?'selected':''}>${t.label}</option>`).join('')}</select></div>`;
+  html+=buildFormFields(currentTable,record);
+  document.getElementById('formFields').innerHTML=html;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function buildFormFields(tableKey,record={}){
+  const t=TABLES[tableKey];
+  return t.fields.map((f,i)=>{
+    const isLong=f==='retorno'||f==='obs'||f==='nova_proposta';
+    const val=(record&&record[f])?record[f].replace(/"/g,'&quot;'):'';
+    if(isLong)return `<div class="form-group full"><label>${t.labels[i]}</label><textarea id="field_${f}">${val}</textarea></div>`;
+    return `<div class="form-group"><label>${t.labels[i]}</label><input id="field_${f}" type="text" value="${val}" placeholder="${t.labels[i]}"></div>`;
+  }).join('');
+}
+function updateFormForTable(tableKey){
+  const saved={};COMMON_FIELDS.forEach(f=>{const el=document.getElementById('field_'+f);if(el)saved[f]=el.value;});
+  const selectHtml=document.getElementById('targetTable').parentElement.outerHTML;
+  document.getElementById('formFields').innerHTML=selectHtml+buildFormFields(tableKey,saved);
+  COMMON_FIELDS.forEach(f=>{const el=document.getElementById('field_'+f);if(el&&saved[f])el.value=saved[f];});
+}
+function closeModal(){document.getElementById('overlay').classList.add('hidden');editingId=null;}
+async function saveRecord(){
+  const targetKey=editingId?currentTable:(document.getElementById('targetTable')?.value||currentTable);
+  const t=TABLES[targetKey];const record={};
+  t.fields.forEach(f=>{const el=document.getElementById('field_'+f);if(el)record[f]=el.value.trim();});
+  let error;
+  if(editingId){({error}=await db.from(currentTable).update(record).eq('id',editingId));}
+  else{({error}=await db.from(targetKey).insert([record]));}
+  if(error){showToast('Erro: '+error.message,'error');return;}
+  showToast(editingId?'✓ Atualizado!':'✓ Criado em '+TABLES[targetKey].label+'!','success');
+  closeModal();
+  if(!editingId&&targetKey!==currentTable){const btns=document.querySelectorAll('.tab-btn');const idx=Object.keys(TABLES).indexOf(targetKey);if(btns[idx])switchTab(targetKey,btns[idx]);}
+  else loadData();
+}
+function openMoveModal(id){
+  movingRecord=allRecords.find(r=>r.id===id);moveDestination=null;
+  document.getElementById('moveSubtitle').textContent=`Cliente: ${movingRecord.nome_cliente||'—'}`;
+  document.getElementById('moveOptions').innerHTML=Object.entries(TABLES).filter(([k])=>k!==currentTable).map(([k,t])=>`<div class="move-option" id="opt_${k}" onclick="selectMoveOption('${k}')"><div class="move-option-dot" style="background:${t.color}"></div><div>${t.label}</div></div>`).join('');
+  document.getElementById('moveOverlay').classList.remove('hidden');
+}
+function selectMoveOption(key){moveDestination=key;document.querySelectorAll('.move-option').forEach(el=>el.classList.remove('selected'));document.getElementById('opt_'+key)?.classList.add('selected');}
+function closeMoveModal(){document.getElementById('moveOverlay').classList.add('hidden');movingRecord=null;moveDestination=null;}
+async function confirmMove(){
+  if(!moveDestination){showToast('Selecione o destino!','error');return;}
+  const dstT=TABLES[moveDestination];const newRecord={};
+  dstT.fields.forEach(f=>{if(movingRecord[f]!==undefined)newRecord[f]=movingRecord[f];});
+  if(movingRecord.proposta&&dstT.fields.includes('proposta_antiga'))newRecord.proposta_antiga=movingRecord.proposta;
+  if(movingRecord.proposta_antiga&&dstT.fields.includes('proposta'))newRecord.proposta=movingRecord.proposta_antiga;
+  const{error:insErr}=await db.from(moveDestination).insert([newRecord]);if(insErr){showToast('Erro: '+insErr.message,'error');return;}
+  await db.from(currentTable).delete().eq('id',movingRecord.id);
+  showToast(`✓ Movido para ${TABLES[moveDestination].label}!`,'success');
+  closeMoveModal();loadData();
+}
+async function deleteRecord(id){
+  if(!confirm('Excluir este registro?'))return;
+  const{error}=await db.from(currentTable).delete().eq('id',id);
+  if(error){showToast('Erro ao excluir','error');return;}
+  showToast('Excluído!','success');loadData();
+}
+
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+document.getElementById('moveOverlay').addEventListener('click',e=>{if(e.target.id==='moveOverlay')closeMoveModal();});
+document.getElementById('newProjectOverlay').addEventListener('click',e=>{if(e.target.id==='newProjectOverlay')closeNewProjectModal();});
+</script>
+</body>
+</html>
